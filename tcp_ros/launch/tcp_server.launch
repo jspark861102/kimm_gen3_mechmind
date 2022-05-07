@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+
+  <node pkg="tcp_ros" type="tcp_server_node" name="tcp_server_node" output="screen">
+    <param name="ip" value="127.0.0.1"/>
+    <param name="port" value="8088"/>
+  </node>
+
+</launch>

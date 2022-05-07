@@ -1,0 +1,76 @@
+<launch>    
+    <arg name="start_aruco_rviz" default="true"/>
+    <arg name="mech_image" default="false"/>
+    <arg name="marker1Id"         default="26"/>
+    <arg name="marker2Id"         default="10"/>    
+    <arg name="markerSize"        default="0.1"/>    <!-- in m -->
+    <arg name="eye"               default="left"/>
+    <arg name="dct_normalization" default="False" />
+    <arg name="dct_filter_size"   default="2" />
+    <arg name="marker1_frame"     default="marker1_frame" />
+    <arg name="marker2_frame"     default="marker2_frame" />
+    <arg name="rotate_marker_axis" default='True'/>
+    <arg name="corner_refinement" default="LINES" /> <!-- NONE, HARRIS, LINES, SUBPIX -->
+
+    <group unless="$(arg mech_image)">
+        <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+            <arg name="filters"       default="pointcloud"/>
+            <arg name="initial_reset" default="true"/>        
+            <arg name="output"        default="log"/>
+        </include>
+    </group>
+
+    <group if="$(arg mech_image)">
+        <node pkg="image_publisher" type="image_publisher" name="image_publisher" args="$(find tcp_ros)/images/rgb_image_00009.jpg" >
+            <param name="flip_horizontal" value="false" />
+            <param name="flip_vertical" value="false" />
+            <param name="frame_id" value="camera_color_optical_frame" />
+            <param name="publish_rate" value="1" />    
+        </node>
+    </group>
+
+    <group unless="$(arg mech_image)">  
+        <node pkg="kimm_aruco" type="kimm_multiple_v1" name="kimm_aruco_publisher">    
+            <param name="is_image" value="$(arg mech_image)" />
+
+            <remap from="/camera_info" to="/camera/color/camera_info" />
+            <remap from="/image" to="/camera/color/image_raw" />
+            
+            <param name="image_is_rectified" value="True"/>
+            <param name="marker_size" value="$(arg markerSize)"/>
+            <param name="marker_id1" value="$(arg marker1Id)"/>
+            <param name="marker_id2" value="$(arg marker2Id)"/>
+            <param name="normalizeImage" value="$(arg dct_normalization)"/>
+            <param name="dct_components_to_remove" value="$(arg dct_filter_size)"/>        
+            <param name="parent_name" value="camera_color_optical_frame"/>
+            <param name="child_name1" value="$(arg marker1_frame)" />
+            <param name="child_name2" value="$(arg marker2_frame)" />
+        </node>
+    </group>
+
+    <group if="$(arg mech_image)">    
+        <node pkg="kimm_aruco" type="kimm_multiple_v1" name="kimm_aruco_publisher">    
+            <param name="is_image" value="$(arg mech_image)" /> 
+
+            <remap from="/camera_info" to="/image_publisher/camera_info" />        
+            <param name="calibration_file" type="string" value="$(find tcp_ros)/ini/mech_mind.ini" /> 
+            <remap from="/image" to="/image_publisher/image_raw" />
+           
+            <param name="image_is_rectified" value="True"/>
+            <param name="marker_size" value="$(arg markerSize)"/>
+            <param name="marker_id1" value="$(arg marker1Id)"/>
+            <param name="marker_id2" value="$(arg marker2Id)"/>
+            <param name="normalizeImage" value="$(arg dct_normalization)"/>
+            <param name="dct_components_to_remove" value="$(arg dct_filter_size)"/>        
+            <param name="parent_name" value="camera_color_optical_frame"/>
+            <param name="child_name1" value="$(arg marker1_frame)" />
+            <param name="child_name2" value="$(arg marker2_frame)" />
+            <param name="rotate_marker_axis_for_ros" value="$(arg rotate_marker_axis)" />/>
+
+            <!-- <param name="corner_refinement"  value="$(arg corner_refinement)" /> -->
+        </node>
+    </group>
+
+    <node name="kimm_aruco_rviz" pkg="rviz" type="rviz" args="-d $(find kimm_aruco)/rviz/kimm_aruco_rviz.rviz -f camera_color_optical_frame" required="true"  if="$(arg start_aruco_rviz)"/>
+</launch>
+

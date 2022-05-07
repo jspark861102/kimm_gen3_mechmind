@@ -1,0 +1,15 @@
+<launch>
+  <arg name="pub_mode" default="false"/>
+
+  <node name="mujoco_ros" pkg="mujoco_ros" type="mujoco_ros" required="true" respawn="false" output="screen">
+    <param name="license" type="string" value="$(env HOME)/.mujoco/mjkey.txt" />
+    <param name="pub_mode" value="$(arg pub_mode)"/>
+    <param name="model_file" type="string" value="$(find myrobot_description)/6dof/kinova_arm_6dof.xml"/>    
+  </node>
+
+  <node name="kimm_gen3_pinocchio_sim" pkg="kimm_gen3_assembly" args="-keyboard" type="kimm_gen3_pinocchio_sim" output="screen">
+  </node>
+  
+  <param name="urdf_path" type="string" value="$(find myrobot_description)"/>
+  <param name="urdf_name" type="string" value="/6dof/GEN3-6DOF_VISION_URDF_ARM_V01.urdf"/>  
+</launch>

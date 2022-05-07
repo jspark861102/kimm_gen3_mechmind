@@ -1,0 +1,14 @@
+<launch>
+
+  <include file="$(find dynamixel_workbench_controllers)/launch/dynamixel_controllers.launch">
+  </include>
+
+  <node name="kimm_gen3_assembly_v1" pkg="kimm_gen3_assembly" args="-keyboard" type="kimm_gen3_assembly_v1" output="screen">
+  <param name="port_number" type="int" value="10000"/>
+  <param name="port_realtime_number" type="int" value="10001"/>
+  <param name="ip_address" type="string" value="192.168.1.10"/>
+  <param name="username" type="string" value="admin"/>
+  <param name="password" type="string" value="admin"/>
+  
+  </node>
+</launch>
