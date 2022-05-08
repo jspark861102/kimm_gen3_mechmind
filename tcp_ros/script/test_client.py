@@ -57,7 +57,7 @@ def pub_get_result_msg(pub_getresult):
     print('published getResult msg')
     
 def feedback_msg_callback(data):
-    print('get pose data')
+    print('get pose data from the mechmind')
     # print(len(data.position))
     # print(data.position[0])
     
@@ -100,12 +100,12 @@ def feedback_msg_callback(data):
         T_co = tf_from_pose_msg(pose_array_msgs.poses[1])
         T_mo = np.matmul(T_mc, T_co)
 
-        print(T_mo)
+        # print(T_mo)
 
         pub_msg = tf_to_pose_msg(T_mo)
 
         pub_obj_pose.publish(pub_msg)
-        print(pub_msg)
+        # print(pub_msg)
     
     pub_obj_poses.publish(pose_array_msgs)
 

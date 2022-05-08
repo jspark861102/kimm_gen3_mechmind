@@ -86,7 +86,7 @@ int main(int argc, char **argv)
     ismech = false;
     isaruco = false;
     iscallback_mech = false;
-    iscallback_aruco = false;
+    iscallback_aruco = false;    
     
     ////////////////////////////////////////////////////////////////////////////////////////            
     Wait.push_back({ 271.32, 343.82, 248.61, 180.58, 84.38, 181.31});                    
@@ -112,25 +112,19 @@ int main(int argc, char **argv)
             base->ClearFaults();        
             set_waypoints_angular_trajectory(base, Wait);
         }      
-        if (ctrl_flag_ == 2 && !COMMAND_SUCCEESS_){ //vision waypoint, v
-            // set_waypoints_angular_trajectory(base, Wait);
-            // ros::Duration(1.0).sleep();            
-            
-
-            //메크 인식 안되면 다시 누를 수 있게 만들어야 됨
-
+        if (ctrl_flag_ == 2 && !COMMAND_SUCCEESS_){ //vision waypoint, v                                             
             if (!ismech) 
             {
                 //call obect pose w.r.t marker            
                 std_msgs::String mech_msg;
                 mech_msg.data = "mech_call";                     
                 mech_call_pub.publish(mech_msg);
-                ismech = true;
+                ismech = true; //to publish only once during the iteration
             }
 
             if (iscallback_mech)                   
             {                
-                cout << "mechndata is received" << endl;
+                cout << "mechdata is received" << endl;
                 set_waypoint_trajectory(base, waypointsDefinition_vision_Home, 0.0);                                        
             }
 
@@ -141,7 +135,7 @@ int main(int argc, char **argv)
                 aruco_msg.data = "aruco_call";                     
                 aruco_call_pub.publish(aruco_msg);
                 isaruco = true;
-                iscallback_mech = false;
+                iscallback_mech = false; //to publish only once during the iteration
             }                        
             if (iscallback_aruco)
             {                                
@@ -278,26 +272,35 @@ void aruco_pose_callback(const geometry_msgs::Pose &msg)
 }
 
 void pose_calculation(const geometry_msgs::Pose &msg)
-{
-    
-    //marker to object
+{    
+    //z축 좌표계 맞춰야 함 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+
+    //////// transformation from marker to object ////////
     Vector3d t_obj;
     t_obj(0) = mech_pose.position.x; 
     t_obj(1) = mech_pose.position.y; 
-    t_obj(2) = mech_pose.position.z;     
-    
-    //length from tip to camera of the gripper
-    Vector3d CtoT;
-    CtoT(0)  = 0.107;
-    CtoT(1)  = 0.027;
-    CtoT(2)  = -0.11;
+    t_obj(2) = mech_pose.position.z; 
+    ///////////////////////////////////////////////////////    
 
-    // CtoT(0)  = 0.102;
-    // CtoT(1)  = 0.032;
-    // CtoT(2)  = -0.078 - (0.1628-0.12);  //close length : 0.1628, tf length : 0.12      
-    
+    //////// transformation from "camera_color_optical_frame" to "tool_frame" ////////    
+    tf::TransformListener tf_listener;
+    tf::StampedTransform echo_transform;    
 
-    //transfromation from camera to kinova
+    // Wait for up to one second for the first transforms to become avaiable. 
+    tf_listener.waitForTransform("/camera_color_optical_frame", "/tool_frame", ros::Time(), ros::Duration(1.0));
+    tf_listener.lookupTransform("/camera_color_optical_frame",  "/tool_frame", ros::Time(), echo_transform);
+    
+    Vector3d CtoT;    
+    CtoT(0)  = echo_transform.getOrigin().getY();
+    CtoT(1)  = echo_transform.getOrigin().getX();
+    CtoT(2)  = -echo_transform.getOrigin().getZ() - (0.1628-0.12);  //close length : 0.1628, tf length : 0.12          
+
+    // CtoT(0)  = 0.107;
+    // CtoT(1)  = 0.027;
+    // CtoT(2)  = -0.11;    
+    ///////////////////////////////////////////////////////
+
+    ////////  transfromation from camera to marker //////// 
     Vector3d t;
     t(0) = -msg.position.y; 
     t(1) = -msg.position.x; 
@@ -310,8 +313,9 @@ void pose_calculation(const geometry_msgs::Pose &msg)
     q.w() = msg.orientation.w;
     q.normalize();
     // cout << q.coeffs() << endl;
+    ///////////////////////////////////////////////////////
 
-    //it is not exact, but just used, for now, for yaw angle transformation
+    //it is not exact, but used ,for now, just for yaw angle transformation
     double roll = 0.0, pitch = 0.0, yaw = -1.5708;    
     Quaterniond qrot;
     qrot = AngleAxisd(roll, Vector3d::UnitX())* AngleAxisd(pitch, Vector3d::UnitY())* AngleAxisd(yaw, Vector3d::UnitZ());     
@@ -321,20 +325,9 @@ void pose_calculation(const geometry_msgs::Pose &msg)
     if (fabs(rpy(0)) > 90 ) rpy(2) = 180.0 + rpy(2);
     //
     
-    cout << "received data" << endl;
-    cout << msg.position.x << "  " << msg.position.y << "  " << msg.position.z << "  " << rpy(0,0) << "  " << rpy(1,0) << "  " << rpy(2,0) << endl;
+    cout << "received data from aruco" << endl;
+    cout << "[" << msg.position.x << "  " << msg.position.y << "  " << msg.position.z << "  " << rpy(0,0) << "  " << rpy(1,0) << "  " << rpy(2,0) << "]" << endl;
     cout << " " << endl;
-
-    // double yaw_wrapted = wrapRadiansFromMinusPiToPi(rpy(2,0)*M_PI/180.0);
-    // cout << yaw_wrapted *180.0/M_PI << endl;
-    // cout << " " << endl;
-    
-    // waypointsDefinition_vision.at(0).at(0) = msg.position.x;
-    // waypointsDefinition_vision.at(0).at(1) = msg.position.y;
-    // waypointsDefinition_vision.at(0).at(2) = msg.position.z;    
-    // waypointsDefinition_vision.at(0).at(4) = (float) rpy(0,0);
-    // waypointsDefinition_vision.at(0).at(5) = (float) rpy(1,0);
-    // waypointsDefinition_vision.at(0).at(6) = (float) rpy(2,0);
 
     waypointsDefinition_vision_up.at(0).at(0) = t(0)                    + CtoT(0) + waypointsDefinition_vision_Home.at(0).at(0) + t_obj(0);
     waypointsDefinition_vision_up.at(0).at(1) = t(1)                    + CtoT(1) + waypointsDefinition_vision_Home.at(0).at(1) + t_obj(1);;
@@ -345,20 +338,17 @@ void pose_calculation(const geometry_msgs::Pose &msg)
 
     waypointsDefinition_vision_down.at(0).at(0) = t(0)                    + CtoT(0) + waypointsDefinition_vision_Home.at(0).at(0) + t_obj(0);;
     waypointsDefinition_vision_down.at(0).at(1) = t(1)                    + CtoT(1) + waypointsDefinition_vision_Home.at(0).at(1) + t_obj(1);;
-    waypointsDefinition_vision_down.at(0).at(2) = 0.0                     + 0.017; //0.013; //down for 1.3cm
+    waypointsDefinition_vision_down.at(0).at(2) = 0.0                     + 0.017; //0.013; //down for 1.3cm    
     waypointsDefinition_vision_down.at(0).at(4) = 0.0                     + waypointsDefinition_vision_Home.at(0).at(4); // for now, tilt angle of objecct is not considered 
     waypointsDefinition_vision_down.at(0).at(5) = 0.0                     + waypointsDefinition_vision_Home.at(0).at(5); // for now, tilt angle of objecct is not considered 
     waypointsDefinition_vision_down.at(0).at(6) = (float) rpy(2,0)        + waypointsDefinition_vision_Home.at(0).at(6); //aruco marker tf is rotated with 90degree
 
-    cout << "waypoint" << endl;
-    cout << waypointsDefinition_vision_up.at(0).at(0)  << endl;
-    cout << waypointsDefinition_vision_up.at(0).at(1)  << endl;
-    cout << waypointsDefinition_vision_up.at(0).at(2)  << endl;
-    cout << waypointsDefinition_vision_up.at(0).at(3)  << endl;
-    cout << waypointsDefinition_vision_up.at(0).at(4)  << endl;
-    cout << waypointsDefinition_vision_up.at(0).at(5)  << endl;
-    cout << waypointsDefinition_vision_up.at(0).at(6)  << endl;    
+    cout << "final waypoint for gen3" << endl;
+    cout << "[" << waypointsDefinition_vision_up.at(0).at(0) << "  " << waypointsDefinition_vision_up.at(0).at(1) << "  " << waypointsDefinition_vision_up.at(0).at(2) << "  " << waypointsDefinition_vision_up.at(0).at(4) << "  " << waypointsDefinition_vision_up.at(0).at(5) << "  " << waypointsDefinition_vision_up.at(0).at(6) << "]" << endl;    
     cout << " " << endl;
+
+    // cout <<"z axis" <<ndl;
+    // cout << t_obj(2) - ( eCtoT(2) + t(2)) + waypointsDefinition_vision_Home.at(0).at(2)<< endl;
 
     iscallback_aruco = true;
 }

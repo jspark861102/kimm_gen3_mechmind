@@ -5,16 +5,25 @@
   <arg name="vision" default="false"/> 
   <arg name="gripper" default="robotiq_2f_85"/>
   <arg name="prefix" default=""/>
-  <arg name="mech_image" default="false"/>
+  <!-- <arg name="mech_image" default="false"/> -->
+  <arg name="mech_available" default="true"/>
 
   <!-- Start Rviz -->
   <arg name="start_gen3_rviz" default="true"/>
 
-  <!-- aruco marker detector -->
+  <!-- aruco marker detector -->  
   <include file="$(find kimm_aruco)/launch/kimm_aruco_publisher.launch">
     <arg name="start_aruco_rviz" default="false"/>
-    <arg name="mech_image" value="$(arg mech_image)"/>
+    <!-- <arg name="mech_image" value="$(arg mech_image)"/> -->
   </include>
+
+  <!-- mechmind -->
+  <group if="$(arg mech_available)">
+    <include file="$(find tcp_ros)/launch/tcp_client.launch">
+    </include>
+    <node pkg="tcp_ros" name="mech_clent" type="test_client.py" output="screen"> 
+    </node>
+  </group>
 
   <!-- kinova kortex -->
   <node name="kimm_gen3_pnp_v1" pkg="kimm_gen3_pnp" args="-keyboard" type="kimm_gen3_pnp_v1" output="screen">
@@ -30,7 +39,7 @@
   </node>
 
   <!-- robot publish -->  
-  <param name="robot_description" command="$(find xacro)/xacro --inorder $(find my_robot_description)/$(arg dof)dof/gen3_robotiq_2f_85_d435.xacro dof:=$(arg dof) vision:=$(arg vision) sim:=false"/>      
+  <param name="robot_description" command="$(find xacro)/xacro --inorder $(find myrobot_description)/$(arg dof)dof/gen3_robotiq_2f_85_d435.xacro dof:=$(arg dof) vision:=$(arg vision) sim:=false"/>      
   <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen">
     <param name="use_tf_static"     value="false"/>
     <param name="publish_frequency" value="100"/>

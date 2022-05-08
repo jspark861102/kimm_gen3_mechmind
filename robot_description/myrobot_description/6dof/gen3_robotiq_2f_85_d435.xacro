@@ -21,6 +21,6 @@
     <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
     
     <xacro:sensor_d435 parent="end_effector_link" use_nominal_extrinsics="$(arg use_nominal_extrinsics)" add_plug="$(arg add_plug)" use_mesh="$(arg use_mesh)">
-        <origin xyz="0.0 0.09 0.032" rpy="0 -1.5708 -1.5708"/>
+        <origin xyz="0.0 0.1 0.032" rpy="0 -1.5708 -1.5708"/>
     </xacro:sensor_d435>
 </robot>

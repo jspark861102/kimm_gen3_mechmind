@@ -26,6 +26,7 @@ find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure    
   pluginlib
   realtime_tools    
+  tf
 )
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(Eigen3 REQUIRED)
