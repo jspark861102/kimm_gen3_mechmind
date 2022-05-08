@@ -134,8 +134,7 @@ int main(int argc, char **argv)
                 std_msgs::String aruco_msg;
                 aruco_msg.data = "aruco_call";                     
                 aruco_call_pub.publish(aruco_msg);
-                isaruco = true;
-                iscallback_mech = false; //to publish only once during the iteration
+                isaruco = true; //to publish only once during the iteration                
             }                        
             if (iscallback_aruco)
             {                                
@@ -152,6 +151,7 @@ int main(int argc, char **argv)
                 COMMAND_SUCCEESS_ = true;                        
                 ismech = false;
                 isaruco = false;
+                iscallback_mech = false; 
                 iscallback_aruco = false;
             }            
         }                
