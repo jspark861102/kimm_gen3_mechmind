@@ -3,7 +3,7 @@
   <arg name="arm" default="gen3"/>
   <arg name="dof" default="6"/>
   <arg name="vision" default="false"/> 
-  <arg name="gripper" default="robotiq_2f_85"/>
+  <arg name="gripper" default="robotiq_2f_140"/>
   <arg name="prefix" default=""/>
   <!-- <arg name="mech_image" default="false"/> -->
   <arg name="mech_available" default="true"/>
@@ -21,7 +21,7 @@
   <group if="$(arg mech_available)">
     <include file="$(find tcp_ros)/launch/tcp_client.launch">
     </include>
-    <node pkg="tcp_ros" name="mech_clent" type="test_client.py" output="screen"> 
+    <node pkg="tcp_ros" name="mech_clent" type="test_client2.py" output="screen"> 
     </node>
   </group>
 
@@ -32,14 +32,15 @@
     <param name="ip_address" type="string" value="192.168.1.10"/>
     <param name="username" type="string" value="admin"/>
     <param name="password" type="string" value="admin"/>  
+    <param name="gripper" type="string" value="$(arg gripper)"/>  
 
     <!-- for joint names -->
     <rosparam command="load" file="$(find kortex_description)/arms/$(arg arm)/$(arg dof)dof/config/joint_limits.yaml" subst_value="true"/>
     <rosparam command="load" file="$(find kortex_description)/grippers/$(arg gripper)/config/joint_limits.yaml" unless="$(eval not arg('gripper'))" subst_value="true"/>
   </node>
 
-  <!-- robot publish -->  
-  <param name="robot_description" command="$(find xacro)/xacro --inorder $(find myrobot_description)/$(arg dof)dof/gen3_robotiq_2f_85_d435.xacro dof:=$(arg dof) vision:=$(arg vision) sim:=false"/>      
+  <!-- robot publish -->    
+  <param name="robot_description" command="$(find xacro)/xacro --inorder $(find myrobot_description)/$(arg dof)dof/gen3_robotiq_2f_140_d435.xacro dof:=$(arg dof) vision:=$(arg vision) sim:=false"/>      
   <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen">
     <param name="use_tf_static"     value="false"/>
     <param name="publish_frequency" value="100"/>

@@ -45,6 +45,7 @@
 #include <sensor_msgs/image_encodings.h>
 #include <kimm_aruco/aruco_ros_utils.h>
 #include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
 
 #include <dynamic_reconfigure/server.h>
@@ -69,6 +70,7 @@ ros::Publisher pose_pub2;
 std::string child_name1;
 std::string parent_name;
 std::string child_name2;
+std::string reference_name;
 std::string calib_filename;
 
 bool isrobotcall;
@@ -80,10 +82,10 @@ int marker_id2;
 
 void image_callback(const sensor_msgs::ImageConstPtr& msg)
 {
-  if (isrobotcall)
-  {
     double ticksBefore = cv::getTickCount();
-    static tf::TransformBroadcaster br;
+    static tf::TransformBroadcaster br;    
+    static tf::TransformListener tf_listener;
+
     if (cam_info_received)
     {
       ros::Time curr_stamp = msg->header.stamp;
@@ -101,85 +103,77 @@ void image_callback(const sensor_msgs::ImageConstPtr& msg)
   //        inImage = inImageNorm;
         }
 
-        // detection results will go into "markers"
-        markers.clear();
-        // ok, let's detect
-        mDetector.detect(inImage, markers, camParam, marker_size, false);
-        // for each marker, draw info and its boundaries in the image
-        for (unsigned int i = 0; i < markers.size(); ++i)
+        if (isrobotcall)
         {
-          // only publishing the selected marker
-          if (markers[i].id == marker_id1)
-          {
-            tf::Transform transform = aruco_ros::arucoMarker2Tf(markers[i], rotate_marker_axis_for_ros);
-            br.sendTransform(tf::StampedTransform(transform, curr_stamp, parent_name, child_name1));
-            geometry_msgs::Pose poseMsg;
-            tf::poseTFToMsg(transform, poseMsg);
-            pose_pub1.publish(poseMsg);
-          }
-          else if (markers[i].id == marker_id2)
-          {
-            tf::Transform transform = aruco_ros::arucoMarker2Tf(markers[i], rotate_marker_axis_for_ros);
-            br.sendTransform(tf::StampedTransform(transform, curr_stamp, parent_name, child_name2));
-            geometry_msgs::Pose poseMsg;
-            tf::poseTFToMsg(transform, poseMsg);       
-            pose_pub2.publish(poseMsg);
-          }
-
-          // but drawing all the detected markers
-          markers[i].draw(inImage, cv::Scalar(0, 0, 255), 2);
-        }
-
-        // paint a circle in the center of the image
-        cv::circle(inImage, cv::Point(inImage.cols / 2, inImage.rows / 2), 4, cv::Scalar(0, 255, 0), 1);
-
-  //       if (markers.size() == 2)
-  //       {
-  //         float x[2], y[2], u[2], v[2];
-  //         for (unsigned int i = 0; i < 2; ++i)
-  //         {
-  //           ROS_DEBUG_STREAM(
-  //               "Marker(" << i << ") at camera coordinates = (" << markers[i].Tvec.at<float>(0,0) << ", " << markers[i].Tvec.at<float>(1,0) << ", " << markers[i].Tvec.at<float>(2,0));
-  //           // normalized coordinates of the marker
-  //           x[i] = markers[i].Tvec.at<float>(0, 0) / markers[i].Tvec.at<float>(2, 0);
-  //           y[i] = markers[i].Tvec.at<float>(1, 0) / markers[i].Tvec.at<float>(2, 0);
-  //           // undistorted pixel
-  //           u[i] = x[i] * camParam.CameraMatrix.at<float>(0, 0) + camParam.CameraMatrix.at<float>(0, 2);
-  //           v[i] = y[i] * camParam.CameraMatrix.at<float>(1, 1) + camParam.CameraMatrix.at<float>(1, 2);
-  //         }
-
-  //         ROS_DEBUG_STREAM(
-  //             "Mid point between the two markers in the image = (" << (x[0]+x[1])/2 << ", " << (y[0]+y[1])/2 << ")");
-
-  // //        // paint a circle in the mid point of the normalized coordinates of both markers
-  // //        cv::circle(inImage, cv::Point((u[0] + u[1]) / 2, (v[0] + v[1]) / 2), 3, cv::Scalar(0, 0, 255), cv::FILLED);
-
-  //         // compute the midpoint in 3D:
-  //         float midPoint3D[3]; // 3D point
-  //         for (unsigned int i = 0; i < 3; ++i)
-  //           midPoint3D[i] = (markers[0].Tvec.at<float>(i, 0) + markers[1].Tvec.at<float>(i, 0)) / 2;
-  //         // now project the 3D mid point to normalized coordinates
-  //         float midPointNormalized[2];
-  //         midPointNormalized[0] = midPoint3D[0] / midPoint3D[2]; //x
-  //         midPointNormalized[1] = midPoint3D[1] / midPoint3D[2]; //y
-  //         u[0] = midPointNormalized[0] * camParam.CameraMatrix.at<float>(0, 0) + camParam.CameraMatrix.at<float>(0, 2);
-  //         v[0] = midPointNormalized[1] * camParam.CameraMatrix.at<float>(1, 1) + camParam.CameraMatrix.at<float>(1, 2);
-
-  //         ROS_DEBUG_STREAM(
-  //             "3D Mid point between the two markers in undistorted pixel coordinates = (" << u[0] << ", " << v[0] << ")");
-
-  //         // paint a circle in the mid point of the normalized coordinates of both markers
-  //         cv::circle(inImage, cv::Point(u[0], v[0]), 3, cv::Scalar(0, 0, 255), cv::FILLED);
-
-  //       }
-
-        // draw a 3D cube in each marker if there is 3D info
-        if (camParam.isValid() && marker_size != -1)
-        {
+          // detection results will go into "markers"
+          markers.clear();
+          // ok, let's detect
+          mDetector.detect(inImage, markers, camParam, marker_size, false);
+          // for each marker, draw info and its boundaries in the image
           for (unsigned int i = 0; i < markers.size(); ++i)
           {
-            aruco::CvDrawingUtils::draw3dCube(inImage, markers[i], camParam);
+            // only publishing the selected marker
+            if (markers[i].id == marker_id1)
+            {
+              // ROS_WARN("reference_name is %s", reference_name.data());
+
+              //broadcasting tf (camera to marker)
+              tf::Transform transform = aruco_ros::arucoMarker2Tf(markers[i], rotate_marker_axis_for_ros);
+              br.sendTransform(tf::StampedTransform(transform, curr_stamp, parent_name, child_name1));
+
+              //publish marker pose w.r.t. reference_name (ex:odom, baselink, camera_color_optical_frame...)
+              geometry_msgs::Pose poseMsg;
+              tf::StampedTransform reference_to_marker;
+              try{
+                tf_listener.waitForTransform(reference_name, child_name1, ros::Time(0), ros::Duration(1.0));
+                tf_listener.lookupTransform(reference_name, child_name1, ros::Time(0), reference_to_marker);
+                tf::poseTFToMsg(reference_to_marker, poseMsg);
+                pose_pub1.publish(poseMsg);
+              }
+              catch (tf::TransformException &ex) {
+                  continue;
+              }
+              // tf::poseTFToMsg(transform, poseMsg);
+              // pose_pub1.publish(poseMsg);            
+            }
+            else if (markers[i].id == marker_id2)
+            {
+              //broadcasting tf (camera to marker)
+              tf::Transform transform = aruco_ros::arucoMarker2Tf(markers[i], rotate_marker_axis_for_ros);
+              br.sendTransform(tf::StampedTransform(transform, curr_stamp, parent_name, child_name2));
+
+              //publish marker pose w.r.t. reference_name (ex:odom, baselink, camera_color_optical_frame...)
+              geometry_msgs::Pose poseMsg;
+              tf::StampedTransform odom_to_marker;
+              try{
+                tf_listener.waitForTransform(reference_name, child_name2, ros::Time(0), ros::Duration(1.0));
+                tf_listener.lookupTransform(reference_name, child_name2, ros::Time(0), odom_to_marker);
+                tf::poseTFToMsg(odom_to_marker, poseMsg);
+                pose_pub2.publish(poseMsg);
+              }
+              catch (tf::TransformException &ex) {
+                  continue;
+              }
+              // tf::poseTFToMsg(transform, poseMsg);       
+              // pose_pub2.publish(poseMsg);
+            }
+
+            // but drawing all the detected markers
+            markers[i].draw(inImage, cv::Scalar(0, 0, 255), 2);
           }
+
+          // paint a circle in the center of the image
+          cv::circle(inImage, cv::Point(inImage.cols / 2, inImage.rows / 2), 4, cv::Scalar(0, 255, 0), 1);  
+
+          // draw a 3D cube in each marker if there is 3D info
+          if (camParam.isValid() && marker_size != -1)
+          {
+            for (unsigned int i = 0; i < markers.size(); ++i)
+            {
+              aruco::CvDrawingUtils::draw3dCube(inImage, markers[i], camParam);
+            }
+          }
+
         }
 
         if (image_pub.getNumSubscribers() > 0)
@@ -191,18 +185,6 @@ void image_callback(const sensor_msgs::ImageConstPtr& msg)
           out_msg.image = inImage;
           image_pub.publish(out_msg.toImageMsg());
         }
-
-        // if (debug_pub.getNumSubscribers() > 0)
-        // {
-        //   // show also the internal image resulting from the threshold operation
-        //   cv_bridge::CvImage debug_msg;
-        //   debug_msg.header.stamp = curr_stamp;
-        //   debug_msg.encoding = sensor_msgs::image_encodings::MONO8;
-        //   debug_msg.image = mDetector.getThresholdedImage();
-        //   debug_pub.publish(debug_msg.toImageMsg());
-        // }
-
-        // ROS_DEBUG("runtime: %f ms", 1000 * (cv::getTickCount() - ticksBefore) / cv::getTickFrequency());
       }
       catch (cv_bridge::Exception& e)
       {
@@ -210,7 +192,6 @@ void image_callback(const sensor_msgs::ImageConstPtr& msg)
         return;
       }
     }
-  }
   isrobotcall = false;
 }
 
@@ -319,6 +300,7 @@ int main(int argc, char **argv)
   nh.param<int>("dct_components_to_remove", dctComponentsToRemove, 2);
   if (dctComponentsToRemove == 0)
     normalizeImageIllumination = false;
+  nh.param<std::string>("reference_name", reference_name, "");    
   nh.param<std::string>("parent_name", parent_name, "");
   nh.param<std::string>("child_name1", child_name1, "");
   nh.param<std::string>("child_name2", child_name2, "");
@@ -326,7 +308,6 @@ int main(int argc, char **argv)
   nh.param<bool>("is_image", is_image, false); 
   nh.param<bool>("rotate_marker_axis_for_ros", rotate_marker_axis_for_ros, true);   
 
-  //jspark
   if (is_image)
   {
     parseCalibrationFile(calib_filename);

@@ -30,6 +30,7 @@ int main(int argc, char **argv)
     n_node.getParam("/kimm_gen3_pnp_v1/ip_address", ip_address);
     n_node.getParam("/kimm_gen3_pnp_v1/username", username);
     n_node.getParam("/kimm_gen3_pnp_v1/password", password);    
+    n_node.getParam("/kimm_gen3_pnp_v1/gripper", grippertype);    
     
     // Create API objects
     auto error_callback = [](k_api::KError err){ cout << "_________ callback error _________" << err.toString(); };
@@ -84,7 +85,7 @@ int main(int argc, char **argv)
 
     //vision callback setting
     ismech = false;
-    isaruco = false;
+    isaruco = false;    
     iscallback_mech = false;
     iscallback_aruco = false;    
     
@@ -117,7 +118,7 @@ int main(int argc, char **argv)
             {
                 //call obect pose w.r.t marker            
                 std_msgs::String mech_msg;
-                mech_msg.data = "mech_call";                     
+                mech_msg.data = "mech_call0";                     
                 mech_call_pub.publish(mech_msg);
                 ismech = true; //to publish only once during the iteration
             }
@@ -140,17 +141,19 @@ int main(int argc, char **argv)
             {                                
                 cout << "aruco data is received" << endl;
                 set_waypoint_trajectory(base, waypointsDefinition_vision_up, 0.0);        
-                set_gripper_command(base, 0.50);                                              
+                set_gripper_command(base, 0.60);                                              
                 set_waypoint_trajectory(base, waypointsDefinition_vision_down, 0.0);        
                 set_gripper_command(base, 0.90);                                              
                 set_waypoint_trajectory(base, waypointsDefinition_vision_up, 0.0);        
-                // set_waypoint_trajectory(base, waypointsDefinition_vision_place, 0.0);        
                 set_gripper_command(base, 0.5);  
+                set_waypoint_trajectory(base, waypointsDefinition_vision_Home, 0.0);                                        
+                // set_waypoint_trajectory(base, waypointsDefinition_vision_place, 0.0);        
+                
                 ROS_WARN("pick and place is complete");
                 
                 COMMAND_SUCCEESS_ = true;                        
                 ismech = false;
-                isaruco = false;
+                isaruco = false;                
                 iscallback_mech = false; 
                 iscallback_aruco = false;
             }            
@@ -263,17 +266,24 @@ void mechmind_pose_callback(const geometry_msgs::Pose &msg)
 {   
     mech_pose = msg;
     iscallback_mech = true;
+
+    ROS_WARN("received data from mechmind");
+    cout << "[" << msg.position.x << "  " << msg.position.y << "  " << msg.position.z << "  " << "]" << endl;
+    cout << " " << endl;
 }
 
 
 void aruco_pose_callback(const geometry_msgs::Pose &msg)
 {   
+    ROS_WARN("received data from aruco");
     pose_calculation(msg);    
 }
 
 void pose_calculation(const geometry_msgs::Pose &msg)
 {    
     //z축 좌표계 맞춰야 함 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+    double grasp_z;
+    cout << grippertype << endl;
 
     //////// transformation from marker to object ////////
     Vector3d t_obj;
@@ -287,13 +297,23 @@ void pose_calculation(const geometry_msgs::Pose &msg)
     tf::StampedTransform echo_transform;    
 
     // Wait for up to one second for the first transforms to become avaiable. 
-    tf_listener.waitForTransform("/camera_color_optical_frame", "/tool_frame", ros::Time(), ros::Duration(1.0));
-    tf_listener.lookupTransform("/camera_color_optical_frame",  "/tool_frame", ros::Time(), echo_transform);
+    tf_listener.waitForTransform("/camera_color_optical_frame", "/tool_frame", ros::Time(0), ros::Duration(1.0));
+    tf_listener.lookupTransform("/camera_color_optical_frame",  "/tool_frame", ros::Time(0), echo_transform);
     
     Vector3d CtoT;    
     CtoT(0)  = echo_transform.getOrigin().getY();
     CtoT(1)  = echo_transform.getOrigin().getX();
-    CtoT(2)  = -echo_transform.getOrigin().getZ() - (0.1628-0.12);  //close length : 0.1628, tf length : 0.12          
+
+    if (grippertype == "robotiq_2f_85")
+    {
+        CtoT(2)  = -echo_transform.getOrigin().getZ() - (0.1628-0.12);  //close length : 0.1628, tf length : 0.12    :2F-85      
+        grasp_z = 0.017;
+    }
+    else if (grippertype == "robotiq_2f_140")
+    {
+        CtoT(2)  = -echo_transform.getOrigin().getZ() - (0.2328-0.20);  //close length : 0.1628, tf length : 0.12 :2F-140         
+        grasp_z = 0.017 + 0.07 + 0.002;
+    }
 
     // CtoT(0)  = 0.107;
     // CtoT(1)  = 0.027;
@@ -315,7 +335,7 @@ void pose_calculation(const geometry_msgs::Pose &msg)
     // cout << q.coeffs() << endl;
     ///////////////////////////////////////////////////////
 
-    //it is not exact, but used ,for now, just for yaw angle transformation
+    //it is not exact, but used ,for now, just for yaw angle transformation --> USE lookupTransform from base_link to marker_frame!!
     double roll = 0.0, pitch = 0.0, yaw = -1.5708;    
     Quaterniond qrot;
     qrot = AngleAxisd(roll, Vector3d::UnitX())* AngleAxisd(pitch, Vector3d::UnitY())* AngleAxisd(yaw, Vector3d::UnitZ());     
@@ -334,14 +354,14 @@ void pose_calculation(const geometry_msgs::Pose &msg)
     waypointsDefinition_vision_up.at(0).at(2) = t(2)                    + CtoT(2);    
     waypointsDefinition_vision_up.at(0).at(4) = 0.0                     + waypointsDefinition_vision_Home.at(0).at(4); // for now, tilt angle of objecct is not considered 
     waypointsDefinition_vision_up.at(0).at(5) = 0.0                     + waypointsDefinition_vision_Home.at(0).at(5); // for now, tilt angle of objecct is not considered 
-    waypointsDefinition_vision_up.at(0).at(6) = (float) rpy(2,0)        + waypointsDefinition_vision_Home.at(0).at(6); //aruco marker tf is rotated with 90degree
+    waypointsDefinition_vision_up.at(0).at(6) = (float) rpy(2,0)        + waypointsDefinition_vision_Home.at(0).at(6) - 90.0; //aruco marker tf is rotated with 90degree
 
     waypointsDefinition_vision_down.at(0).at(0) = t(0)                    + CtoT(0) + waypointsDefinition_vision_Home.at(0).at(0) + t_obj(0);;
     waypointsDefinition_vision_down.at(0).at(1) = t(1)                    + CtoT(1) + waypointsDefinition_vision_Home.at(0).at(1) + t_obj(1);;
-    waypointsDefinition_vision_down.at(0).at(2) = 0.0                     + 0.017; //0.013; //down for 1.3cm    
+    waypointsDefinition_vision_down.at(0).at(2) = 0.0                     + grasp_z;
     waypointsDefinition_vision_down.at(0).at(4) = 0.0                     + waypointsDefinition_vision_Home.at(0).at(4); // for now, tilt angle of objecct is not considered 
     waypointsDefinition_vision_down.at(0).at(5) = 0.0                     + waypointsDefinition_vision_Home.at(0).at(5); // for now, tilt angle of objecct is not considered 
-    waypointsDefinition_vision_down.at(0).at(6) = (float) rpy(2,0)        + waypointsDefinition_vision_Home.at(0).at(6); //aruco marker tf is rotated with 90degree
+    waypointsDefinition_vision_down.at(0).at(6) = (float) rpy(2,0)        + waypointsDefinition_vision_Home.at(0).at(6) - 90.0; //aruco marker tf is rotated with 90degree
 
     cout << "final waypoint for gen3" << endl;
     cout << "[" << waypointsDefinition_vision_up.at(0).at(0) << "  " << waypointsDefinition_vision_up.at(0).at(1) << "  " << waypointsDefinition_vision_up.at(0).at(2) << "  " << waypointsDefinition_vision_up.at(0).at(4) << "  " << waypointsDefinition_vision_up.at(0).at(5) << "  " << waypointsDefinition_vision_up.at(0).at(6) << "]" << endl;    

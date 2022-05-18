@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+
+<robot name="gen3_robotiq_2f_85_d435" xmlns:xacro="http://ros.org/wiki/xacro">
+    
+    <!-- Arguments -->
+    <xacro:arg name="arm" default="gen3" />
+    <xacro:arg name="dof" default="7" />
+    <xacro:arg name="vision" default="true" />
+
+    <xacro:arg name="gripper" default="robotiq_2f_140" />
+
+    <xacro:arg name="sim" default="false" />
+    <xacro:arg name="prefix" default="" />
+
+    <xacro:include filename="$(find kortex_description)/robots/kortex_robot.xacro" />
+    <xacro:load_robot arm="$(arg arm)" gripper="$(arg gripper)" dof="$(arg dof)" vision="$(arg vision)" sim="$(arg sim)" prefix="$(arg prefix)" />
+
+    <xacro:arg name="use_nominal_extrinsics" default="false"/>
+    <xacro:arg name="add_plug" default="false" />
+    <xacro:arg name="use_mesh" default="true" />
+    <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
+    
+    <xacro:sensor_d435 parent="end_effector_link" use_nominal_extrinsics="$(arg use_nominal_extrinsics)" add_plug="$(arg add_plug)" use_mesh="$(arg use_mesh)">
+        <origin xyz="0.0 0.1 0.032" rpy="0 -1.5708 -1.5708"/>
+    </xacro:sensor_d435>
+</robot>

@@ -66,6 +66,7 @@ bool COMMAND_SUCCEESS_;
 int total_joint_size;
 
 //variable for gripper example
+string grippertype;  
 bool isgripper;
 
 //varialble for vision callback

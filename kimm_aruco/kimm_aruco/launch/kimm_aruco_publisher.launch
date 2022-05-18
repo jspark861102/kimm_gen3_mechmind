@@ -7,6 +7,7 @@
     <arg name="eye"               default="left"/>
     <arg name="dct_normalization" default="False" />
     <arg name="dct_filter_size"   default="2" />
+    <arg name="reference_name"    default="camera_color_optical_frame" />
     <arg name="marker1_frame"     default="marker1_frame" />
     <arg name="marker2_frame"     default="marker2_frame" />
     <arg name="rotate_marker_axis" default='True'/>
@@ -45,6 +46,8 @@
             <param name="parent_name" value="camera_color_optical_frame"/>
             <param name="child_name1" value="$(arg marker1_frame)" />
             <param name="child_name2" value="$(arg marker2_frame)" />
+            <param name="reference_name" value="$(arg reference_name)" />
+            <param name="rotate_marker_axis_for_ros" value="$(arg rotate_marker_axis)" />/>
         </node>
     </group>
 
