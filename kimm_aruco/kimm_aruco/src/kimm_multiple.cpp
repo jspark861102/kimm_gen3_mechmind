@@ -80,6 +80,8 @@ double marker_size;
 int marker_id1;
 int marker_id2;
 
+#define PUB 1
+
 void image_callback(const sensor_msgs::ImageConstPtr& msg)
 {
     double ticksBefore = cv::getTickCount();
@@ -192,7 +194,11 @@ void image_callback(const sensor_msgs::ImageConstPtr& msg)
         return;
       }
     }
+#if defined(PUB)
+  isrobotcall = true;
+#else
   isrobotcall = false;
+#endif
 }
 
 // wait for one camerainfo, then shut down that subscriber
@@ -210,7 +216,9 @@ void call_from_robot_callback(const std_msgs::String &msg)
   if (msg.data.compare(a.data) == 0)
     isrobotcall = true;
 
+#if (!PUB)
   ROS_WARN("isrobotcall is %d", isrobotcall);
+#endif
 }
 
 bool parseCalibrationFile(std::string calib_filename)
@@ -277,7 +285,12 @@ int main(int argc, char **argv)
 
   normalizeImageIllumination = false;
 
+#if (PUB)
+  isrobotcall = true;
+#else
   isrobotcall = false;
+#endif
+
   rotate_marker_axis_for_ros = true;
 
   nh.param<bool>("image_is_rectified", useRectifiedImages, true);
