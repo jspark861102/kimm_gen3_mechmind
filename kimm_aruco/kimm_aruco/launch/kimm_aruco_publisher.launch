@@ -1,9 +1,9 @@
 <launch>    
     <arg name="start_aruco_rviz" default="true"/>
     <arg name="mech_image" default="false"/>
-    <arg name="marker1Id"         default="26"/>
+    <arg name="marker1Id"         default="5"/>
     <arg name="marker2Id"         default="10"/>    
-    <arg name="markerSize"        default="0.1"/>    <!-- in m -->
+    <arg name="markerSize"        default="0.03"/>    <!-- in m -->
     <arg name="eye"               default="left"/>
     <arg name="dct_normalization" default="False" />
     <arg name="dct_filter_size"   default="2" />
@@ -22,7 +22,7 @@
     </group>
 
     <group if="$(arg mech_image)">
-        <node pkg="image_publisher" type="image_publisher" name="image_publisher" args="$(find tcp_ros)/images/rgb_image_00009.jpg" >
+        <node pkg="image_publisher" type="image_publisher" name="image_publisher" args="$(find tcp_ros)/images/rgb_image_00021.jpg" >
             <param name="flip_horizontal" value="false" />
             <param name="flip_vertical" value="false" />
             <param name="frame_id" value="camera_color_optical_frame" />

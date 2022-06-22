@@ -122,44 +122,55 @@ void image_callback(const sensor_msgs::ImageConstPtr& msg)
               //broadcasting tf (camera to marker)
               tf::Transform transform = aruco_ros::arucoMarker2Tf(markers[i], rotate_marker_axis_for_ros);
               br.sendTransform(tf::StampedTransform(transform, curr_stamp, parent_name, child_name1));
-
-              //publish marker pose w.r.t. reference_name (ex:odom, baselink, camera_color_optical_frame...)
               geometry_msgs::Pose poseMsg;
-              tf::StampedTransform reference_to_marker;
-              try{
-                tf_listener.waitForTransform(reference_name, child_name1, ros::Time(0), ros::Duration(1.0));
-                tf_listener.lookupTransform(reference_name, child_name1, ros::Time(0), reference_to_marker);
-                tf::poseTFToMsg(reference_to_marker, poseMsg);
+
+              if (is_image)
+              {
+                tf::poseTFToMsg(transform, poseMsg);       
                 pose_pub1.publish(poseMsg);
               }
-              catch (tf::TransformException &ex) {
-                  continue;
-              }
-              // tf::poseTFToMsg(transform, poseMsg);
-              // pose_pub1.publish(poseMsg);            
+              else
+              {
+                //publish marker pose w.r.t. reference_name (ex:odom, baselink, camera_color_optical_frame...)
+                tf::StampedTransform reference_to_marker;
+                try{
+                  tf_listener.waitForTransform(reference_name, child_name1, ros::Time(0), ros::Duration(1.0));
+                  tf_listener.lookupTransform(reference_name, child_name1, ros::Time(0), reference_to_marker);
+                  tf::poseTFToMsg(reference_to_marker, poseMsg);
+                  pose_pub1.publish(poseMsg);
+                }
+                catch (tf::TransformException &ex) {
+                    continue;
+                }
+              }                        
             }
             else if (markers[i].id == marker_id2)
             {
               //broadcasting tf (camera to marker)
               tf::Transform transform = aruco_ros::arucoMarker2Tf(markers[i], rotate_marker_axis_for_ros);
               br.sendTransform(tf::StampedTransform(transform, curr_stamp, parent_name, child_name2));
-
-              //publish marker pose w.r.t. reference_name (ex:odom, baselink, camera_color_optical_frame...)
               geometry_msgs::Pose poseMsg;
-              tf::StampedTransform odom_to_marker;
-              try{
-                tf_listener.waitForTransform(reference_name, child_name2, ros::Time(0), ros::Duration(1.0));
-                tf_listener.lookupTransform(reference_name, child_name2, ros::Time(0), odom_to_marker);
-                tf::poseTFToMsg(odom_to_marker, poseMsg);
+
+              if (is_image)
+              {
+                tf::poseTFToMsg(transform, poseMsg);       
                 pose_pub2.publish(poseMsg);
               }
-              catch (tf::TransformException &ex) {
-                  continue;
-              }
-              // tf::poseTFToMsg(transform, poseMsg);       
-              // pose_pub2.publish(poseMsg);
+              else
+              {
+                //publish marker pose w.r.t. reference_name (ex:odom, baselink, camera_color_optical_frame...)
+                tf::StampedTransform reference_to_marker;
+                try{
+                  tf_listener.waitForTransform(reference_name, child_name2, ros::Time(0), ros::Duration(1.0));
+                  tf_listener.lookupTransform(reference_name, child_name2, ros::Time(0), reference_to_marker);
+                  tf::poseTFToMsg(reference_to_marker, poseMsg);
+                  pose_pub2.publish(poseMsg);
+                }
+                catch (tf::TransformException &ex) {
+                    continue;
+                }
+              }              
             }
-
             // but drawing all the detected markers
             markers[i].draw(inImage, cv::Scalar(0, 0, 255), 2);
           }
